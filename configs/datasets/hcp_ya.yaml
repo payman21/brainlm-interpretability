@@ -1,0 +1,201 @@
+name: hcp_ya
+
+# ---------------------------------------------------------------------------
+# Where the data is
+# ---------------------------------------------------------------------------
+# This dataset was never staged locally. The 4.02 TB of source
+# NIfTI was streamed from S3 on an HPC cluster, parcellated there, and the
+# voxels discarded run by run. `raw_path` is therefore an S3 URI, not a
+# filesystem path, and nothing in this repo reads from it directly.
+# Full procedure: docs/cluster_operations.md
+# NOT a filesystem path and NOT read by any code in this repo. It records where
+# the voxels came from, so a parcel file can always be traced back to its source
+# object. parcellate.py cannot consume this config -- see `pipeline` below.
+raw_path: s3://hcp-openaccess/HCP_1200
+raw_access: aws-s3            # profile `hcp`; keys from BALSA "Get/Reset AWS S3 Access"
+cluster_path: ${HCP_ROOT}          # cluster scratch: parcels/, motion/, logs/, staging/
+interim_path: data/HCP_young_adults/interim
+processed_path: data/HCP_young_adults/processed
+
+# Switched from NEOFAC_N on 2026-08-17. Frozen embeddings gave R2 -0.002 for
+# neuroticism and near-zero for every personality/affect target, while cognitive
+# targets carried real signal -- fluid intelligence best at R2 +0.035, r +0.198.
+# The split is across 19 targets, not one lucky pick; see
+# results/hcp_ya/brainlm/metrics/frozen_controls_cls.csv and plan section 3.1.
+label_column: PMAT24_A_CR     # Penn Matrix Test, fluid intelligence
+label_column_previous: NEOFAC_N
+metadata:
+  # 1206 subjects x 584 open-access variables, exported from BALSA
+  # (POST /project/subjectCSV). ConnectomeDB's REST route is retired.
+  phenotype: data/HCP_young_adults/demographics/hcp_ya_unrestricted.csv
+  # Variable name <-> opaque BALSA column id, needed to re-run the export.
+  column_map: data/HCP_young_adults/demographics/hcp_ya_column_map.csv
+  join_key: Subject
+
+# Age is the OPEN-ACCESS 5-year band (22-25 / 26-30 / 31-35 / 36+), not exact
+# age. Exact age is `Age_in_Yrs` and is restricted, as are Family_ID and
+# ZygosityGT. Restricted access was not held at build time; see plan section 3.3.
+covariates: [Age, Gender, 3T_RS-fMRI_PctCompl, QC_Issue]
+
+# ---------------------------------------------------------------------------
+# Atlas
+# ---------------------------------------------------------------------------
+atlas:
+  name: A424
+  image: external/atlases/A424/A424+2mm.nii.gz
+  n_parcels: 424
+  space: MNI152NLin6Asym
+
+  # VERIFIED against real data, not assumed: HCP's MNINonLinear volumes are
+  # (91,109,91) at 2 mm with affine [[-2,0,0,90],[0,2,0,-126],[0,0,2,-72]] --
+  # bit-identical to A424+2mm. No warp, no interpolation, no resampling. This
+  # parcellate.py's warp_atlas_to_bold_space is bypassed entirely.
+  warp_to_bold_space: false
+
+  # 405 is "Vermis Crus I", a single voxel in the 2 mm atlas against a median
+  # parcel of 252. Every HCP subject is on one grid, so it carries real data for
+  # everyone; it is zeroed to keep the input 424-channel with a parcel this small
+  # contributing nothing, and BrainLM's toolkit treats zero as missing.
+  zero_parcels: [405]
+
+bold_space: MNI152NLin6Asym
+
+# ---------------------------------------------------------------------------
+# Cohort
+# ---------------------------------------------------------------------------
+cohort:
+  # 1016 subjects: 3T_RS-fMRI_Count == 4 AND NEOFAC_N present. Verified against
+  # S3 -- all 1016 have exactly 4 runs, 4064 objects, no gaps.
+  subject_list: data/HCP_young_adults/demographics/hcp_ya_cohort_noC.txt
+  n_subjects: 938
+  # Parcels exist for all 1016; this list defines the ANALYSIS cohort. The full
+  # list is hcp_ya_cohort.txt and the 78 dropped ids are hcp_ya_excluded_qcC.txt,
+  # so the exclusion is reversible and auditable rather than baked into the data.
+  full_subject_list: data/HCP_young_adults/demographics/hcp_ya_cohort.txt
+  runs: [rfMRI_REST1_LR, rfMRI_REST1_RL, rfMRI_REST2_LR, rfMRI_REST2_RL]
+
+  # S3 key template, relative to raw_path.
+  bold_key: "{subject}/MNINonLinear/Results/{run}/{run}_hp2000_clean.nii.gz"
+
+  # HCP ships no fMRIPrep-style confounds TSV. Movement_Regressors.txt is
+  # 12 columns: 3 translations (mm), 3 rotations (deg), then their derivatives.
+  # VERIFIED: 1200 rows x 12 cols.
+  motion_file: "{subject}/MNINonLinear/Results/{run}/Movement_Regressors.txt"
+  motion_columns: [trans_x, trans_y, trans_z, rot_x, rot_y, rot_z,
+                   trans_x_d, trans_y_d, trans_z_d, rot_x_d, rot_y_d, rot_z_d]
+
+  # NOT yet fetched. HCP's own frame-to-frame displacement measure and the
+  # natural basis for scrubbing; ~11 KB/run, ~45 MB for the cohort.
+  relative_rms_file: "{subject}/MNINonLinear/Results/{run}/Movement_RelativeRMS.txt"
+  relative_rms_fetched: false
+
+  # ONE exclusion applied, label-free and fixed before any target was modelled:
+  # QC_Issue code C, "data acquired during a period of instabilities in the head
+  # coil" -- 78 of 1016 subjects. Codes A/B concern anatomy and surface
+  # segmentation and D/E concern rfMRI artifact that FIX cleaned, none of which
+  # bear on volumetric parcel means; C is an acquisition fault in the signal
+  # itself. Checked for bias before applying: NEOFAC_N is 16.54 (sd 7.36) in the
+  # 938 kept vs 16.00 (sd 7.20) in the 78 dropped, t=0.62 p=0.53, so this does
+  # not shift the target distribution. No overlap with the short-run subjects.
+  #
+  #  - 15 subjects have at least one short run (907-1177 TP rather than 1200),
+  #    matching 3T_RS-fMRI_PctCompl < 100 exactly. Kept: a 907-TP run still
+  #    yields 4 disjoint 200-TP windows, and the whole effect is 30 lost
+  #    windows out of 24,384 (0.12%).
+  #  - 144 subjects carry a QC_Issue code; 78 of those include code C, "data
+  #    acquired during a period of instabilities in the head coil". Codes A/B
+  #    concern anatomy and surface segmentation, D/E concern rfMRI artifact
+  #    that FIX cleaned. C is the one that bears on volumetric rs-fMRI and is
+  #    an open decision -- see plan section 9.
+  exclude_qc_codes: [C]
+  exclude_subjects_file: data/HCP_young_adults/demographics/hcp_ya_excluded_qcC.txt
+  min_usable_frames: 200     # one BrainLM window
+
+# ---------------------------------------------------------------------------
+# Denoising
+# ---------------------------------------------------------------------------
+denoise:
+  # The source is already ICA-FIX cleaned (hp2000_clean), which is the same
+  # denoising family as BrainLM's UK Biobank pretraining corpus. That is the
+  # reason for choosing S1200 over the 2025 BALSA release, whose extra reclean
+  # + temporal-ICA stages move it further from the pretraining distribution.
+  strategy: none_applied_upstream_icafix
+  highpass_applied: 2000       # seconds, the hp2000 in the filename
+  global_signal_regression: false
+
+# ---------------------------------------------------------------------------
+# Temporal resampling
+# ---------------------------------------------------------------------------
+resample:
+  # DISABLED, deliberately.
+  #
+  # source 0.72 s vs BrainLM pretraining 0.735 s is a 2.04% difference, uniform
+  # across the whole cohort (single site, single scanner, single protocol).
+  # Resampling would buy alignment far smaller than that and cost a real
+  # interpolation on every timeseries -- resample_poly applies an anti-aliasing
+  # FIR whose transient is a genuine distortion of the signal BrainLM then reads.
+  #
+  # Single site, single scanner, single protocol: there is no TR spread to remove
+  # and no acquisition cue to suppress.
+  #
+  # A 200-TP window is 144.0 s at 0.72 s rather than 147.0 s at 0.735 s. The
+  # model sees a fixed count of timepoints, not a duration, so nothing downstream
+  # changes shape.
+  apply: false
+  source_tr: 0.72              # VERIFIED from the NIfTI header
+  pretraining_tr: 0.735        # recorded for reference; not a target
+  effective_tr: 0.72           # what reaches the model
+
+# ---------------------------------------------------------------------------
+# Scaling
+# ---------------------------------------------------------------------------
+scaling:
+  method: robust
+  iqr_range: [25, 75]
+  # Known divergence from BrainLM: they computed median/IQR ACROSS subjects per
+  # parcel, this pipeline computes them per subject per parcel. Input gain 7
+  # compensates, confirmed on HCP by the plan's section 6.1 sweep. Plan section 8.
+  per_subject: true
+
+# ---------------------------------------------------------------------------
+# Which code actually produced this
+# ---------------------------------------------------------------------------
+pipeline:
+  # parcellate.py did NOT produce these parcels and cannot: it resolves one BOLD
+  # file per subject from a local raw_path, while HCP is four runs per subject
+  # streamed from S3 and deleted after verification. The cluster pipeline did,
+  # and its output is verified bit-for-bit identical to parcellate.py's on two
+  # subjects. The atlas/denoise/scaling keys above therefore describe the data
+  # as built; they are consumed by the DOWNSTREAM steps, not by parcellate.py.
+  parcellation: src/00_acquisition/cluster/parcellate_run.py
+  orchestration: src/00_acquisition/cluster/process_subject.sh
+  audit: src/00_acquisition/cluster/audit.py
+  procedure: docs/cluster_operations.md
+  parcels_location: ${HCP_ROOT}/parcels   # cluster scratch, not mirrored locally
+
+# ---------------------------------------------------------------------------
+# Model input
+# ---------------------------------------------------------------------------
+model_input:
+  # Both measured on HCP by the reconstruction sweep (plan section 6.1), not
+  # inherited: R2 0.134 at gain 7 with mm coordinates, on a broad 7-11 plateau.
+  gain: 7
+  coord_mode: mm
+  checkpoint: models/foundation/brainlm/checkpoints/old_13M
+  # Reconstruction lands in the 0.126-0.176 band of BrainLM Table 1's weaker
+  # 90%-masking checkpoints rather than the 0.316 headline. old_13M's training
+  # mask ratio is undocumented; see docs/brainlm_model_version_audit.md.
+  reconstruction_r2_hcp: 0.134
+
+# ---------------------------------------------------------------------------
+# Windowing
+# ---------------------------------------------------------------------------
+window:
+  length: 200                  # BrainLM input context
+  disjoint: true
+  # 6 per full 1200-TP run, fewer for the 20 short runs.
+  # All 1016 subjects: 24,354 windows.
+  # Analysis cohort of 938 (QC C excluded): 22,482 windows. The 78 dropped
+  # subjects all have full-length runs, so they cost exactly 78 x 24 = 1,872.
+  total_windows_all: 24354
+  total_windows: 22482

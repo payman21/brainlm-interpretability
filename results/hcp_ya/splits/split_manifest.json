@@ -1,0 +1,22 @@
+{
+  "dataset": "hcp_ya",
+  "target": "PMAT24_A_CR",
+  "seed": 0,
+  "holdout_frac_requested": 0.3,
+  "holdout_frac_actual": 0.29914529914529914,
+  "n_total": 936,
+  "n_train": 656,
+  "n_holdout": 280,
+  "n_strata": 5,
+  "balance": {
+    "target_train_mean": 16.93140243902439,
+    "target_train_sd": 4.721175880191435,
+    "target_holdout_mean": 16.97142857142857,
+    "target_holdout_sd": 4.707050725306903,
+    "target_ttest_t": -0.11874366084063379,
+    "target_ttest_p": 0.9055039780010989,
+    "frac_female_train": 0.5411585365853658,
+    "frac_female_holdout": 0.5392857142857143
+  },
+  "caveat": "subject-level, NOT family-level: HCP-YA is a twin study and Family_ID is restricted, so a held-out subject's twin may be in train."
+}

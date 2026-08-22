@@ -1,0 +1,2 @@
+target,n_subjects_train,n_windows_train,width,n_alive,readout_alpha,readout_cv_r2,readout_cv_r,identity_check_max_abs_err,fidelity_r2,fidelity_r,pooled_embedding_fvu,top_k,share_at_top_k,share_at_top_k_projection_refit,k_to_50pct,k_to_90pct,covariance_amplification_top_k
+PMAT24_A_CR,656,15719,4096,4075,46.41588833612777,0.08200655717731165,0.2940748967426835,4.440892098500626e-15,0.1779882433797294,0.5934349758922515,0.10249560803713843,29,0.5868419491676178,0.9158601259522179,29,134,0.7426273210869628

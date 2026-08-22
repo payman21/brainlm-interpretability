@@ -1,0 +1,6 @@
+target,kind,metric,value,chance,source,n_tokens
+parcel_xyz_mm,continuous (3),R2,0.9969940618825893,0.0,random_init,50000
+patch_index,ordinal (10),R2,0.9860531965503933,0.0,random_init,50000
+parcel_identity,categorical (424),top-1,0.81428,0.0023584905660377358,random_init,50000
+network_identity,categorical (7),top-1,0.62074,0.14285714285714285,random_init,50000
+patch_position,categorical (10),top-1,0.99794,0.1,random_init,50000

@@ -1,0 +1,2 @@
+rung,seed,init,trainable_params,r2,r,mse,minutes
+last_block,0,pretrained,2497285,0.025314666364272598,0.18819667619520075,0.05421687025343754,213.8

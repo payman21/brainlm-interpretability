@@ -1,0 +1,31 @@
+# OS / editor junk
+.DS_Store
+.ipynb_checkpoints/
+*.swp
+
+# Environments
+.venv/
+__pycache__/
+*.pyc
+
+# Model weights and checkpoints. The trained SAE is hosted separately; the
+# BrainLM checkpoint is the authors' to distribute, not ours.
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+
+# Subject-level derived data from a consortium-governed dataset. The aggregate
+# tables under results/ ARE committed -- they are keyed by feature, network or
+# target, never by subject -- but activation matrices and per-subject prediction
+# tables are not redistributable and are regenerable from the code here.
+*.npz
+*.npy
+results/**/finetune_predictions_*.csv
+results/**/input_scaling_check_*.csv
+data/
+
+# Figures are regenerable by figures/make_figures.py, but the PDFs are committed
+# so the tables can be checked against what the paper shows. Build intermediates
+# are not.
+figures/*.png

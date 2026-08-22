@@ -1,0 +1,31 @@
+# Python 3.12. Versions are the ones the reported results were produced with.
+#
+# The figure and table pipeline (figures/make_figures.py and everything under
+# src/04_interpretability/ that reads a CSV) needs only numpy/pandas/scipy/
+# scikit-learn/matplotlib. torch and transformers are needed to load the BrainLM
+# checkpoint and re-derive embeddings; nibabel/nilearn only for parcellation.
+
+numpy==2.3.5
+pandas==3.0.0
+scipy==1.17.0
+scikit-learn==1.8.0
+matplotlib==3.10.8
+PyYAML==6.0.3
+
+# Model
+torch==2.10.0
+transformers==4.44.2
+
+# Parcellation (voxel-level pass only)
+nibabel==5.3.3
+nilearn==0.13.0
+
+# Phenotype export
+requests==2.32.5
+beautifulsoup4==4.14.3
+
+# Optional: enables the real nonlinear atlas warp in parcellate.py instead of
+# the affine-only fallback. Not exercised in this study -- HCP-YA volumes are
+# bit-identical in grid to the atlas, so no warp is applied.
+# templateflow
+# nitransforms
