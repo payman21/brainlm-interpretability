@@ -7,7 +7,7 @@ name: hcp_ya
 # NIfTI was streamed from S3 on an HPC cluster, parcellated there, and the
 # voxels discarded run by run. `raw_path` is therefore an S3 URI, not a
 # filesystem path, and nothing in this repo reads from it directly.
-# Full procedure: docs/cluster_operations.md
+# Full procedure: src/00_acquisition/cluster/ and src/01_preprocessing/README.md
 # NOT a filesystem path and NOT read by any code in this repo. It records where
 # the voxels came from, so a parcel file can always be traced back to its source
 # object. parcellate.py cannot consume this config -- see `pipeline` below.
@@ -170,7 +170,7 @@ pipeline:
   parcellation: src/00_acquisition/cluster/parcellate_run.py
   orchestration: src/00_acquisition/cluster/process_subject.sh
   audit: src/00_acquisition/cluster/audit.py
-  procedure: docs/cluster_operations.md
+  procedure: src/01_preprocessing/README.md
   parcels_location: ${HCP_ROOT}/parcels   # cluster scratch, not mirrored locally
 
 # ---------------------------------------------------------------------------
