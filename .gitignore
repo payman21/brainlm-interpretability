@@ -29,3 +29,9 @@ data/
 # so the tables can be checked against what the paper shows. Build intermediates
 # are not.
 figures/*.png
+
+# Run-provenance stamps written by src/common_provenance.py. These are a local
+# development log -- one record per invocation, including superseded runs -- and
+# are not part of the released result set. Ignored rather than merely deleted so
+# that re-running the pipeline does not silently add them back.
+results/**/provenance.json
