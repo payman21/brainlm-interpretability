@@ -57,19 +57,41 @@ def fig1_accessibility() -> None:
     names = [pretty.get(t, t) for t in cont.target]
     colors = [COG if t in cognitive else AFF for t in cont.target]
 
-    fig, ax = plt.subplots(figsize=(3.4, 3.6))
-    y = np.arange(len(cont))
-    ax.barh(y, cont.r2, color=colors, height=0.72)
-    ax.set_yticks(y, names)
-    ax.axvline(0, color="k", lw=0.6)
-    ax.set_xlabel("out-of-fold $R^2$ (frozen embedding $\\to$ target)")
-    ax.set_title("Cognition is encoded; affect is not", loc="left")
-    handles = [plt.Rectangle((0, 0), 1, 1, color=COG),
-               plt.Rectangle((0, 0), 1, 1, color=AFF)]
-    ax.legend(handles, ["cognitive", "affective / personality / sleep"],
-              loc="lower right", frameon=False)
-    fig.savefig(OUT / "fig1_accessibility.pdf")
-    plt.close(fig)
+    # This figure alone runs 1.6x the shared type scale (8 -> 12.8pt and so on), on a
+    # canvas 30% wider than the 4.10in this used to emit and the same height. Local
+    # rc_context, not an edit to the global block, so the other five figures keep the
+    # sizes they were tuned at.
+    #
+    # Two mechanics change with the larger type. The shared savefig.bbox="tight" is
+    # dropped here because at 12.8pt the x-label is wider than the plotting area and
+    # tight-bbox let it run off the page (the saved PDF ended mid-word, at "targe");
+    # constrained layout instead shrinks the axes until every decoration fits inside
+    # the canvas, which also makes the emitted PDF exactly FIGSIZE. And the x-label is
+    # wrapped, because on one line it does not fit beside 11.2pt target names.
+    with plt.rc_context({
+        "font.size": 12.8, "axes.titlesize": 13.6, "axes.labelsize": 12.8,
+        "xtick.labelsize": 11.2, "ytick.labelsize": 11.2, "legend.fontsize": 11.2,
+        "savefig.bbox": None,
+    }):
+        fig, ax = plt.subplots(figsize=(5.33, 3.38), layout="constrained")
+        fig.get_layout_engine().set(w_pad=0.03, h_pad=0.03)
+        y = np.arange(len(cont))
+        ax.barh(y, cont.r2, color=colors, height=0.72)
+        ax.set_yticks(y, names)
+        ax.axvline(0, color="k", lw=0.6)
+        ax.set_xlabel("out-of-fold $R^2$\n(frozen embedding $\\to$ target)")
+        # Anchored to the figure, not the axes: at 13.6pt the title is wider than the
+        # plotting area, and an axes title starts at the axes left edge, which the
+        # 11.2pt target names push 2.3in in. As a suptitle it starts at the canvas edge
+        # and has the full width to run in.
+        fig.suptitle("Cognition is encoded; affect is not",
+                     x=0.01, ha="left", fontsize=13.6)
+        handles = [plt.Rectangle((0, 0), 1, 1, color=COG),
+                   plt.Rectangle((0, 0), 1, 1, color=AFF)]
+        ax.legend(handles, ["cognitive", "affective / personality / sleep"],
+                  loc="lower right", frameon=False)
+        fig.savefig(OUT / "fig1_accessibility.pdf")
+        plt.close(fig)
 
     ctl = d[d.kind != "continuous"]
     print("  controls:", {r.target: round(r.score, 3) for r in ctl.itertuples()})
@@ -137,7 +159,7 @@ def fig2_probe_controls() -> None:
     REMOVED = ["rawvar", "rawalff", "iqr", "window", "runphase", "session"]
     fams = [f for f in VISIBLE + REMOVED if f in set(pr.family)]
     srcs = [("frozen_mean", "pretrained BrainLM", COG),
-            ("random_init_mean", "randomly initialised", HL),
+            ("random_init_mean", "randomly initialized", HL),
             ("random_proj", "random linear projection", AFF)]
     srcs = [s for s in srcs if s[0] in set(pr.source)]
 
@@ -171,7 +193,7 @@ def figA1_token_identity() -> None:
     """
     idf = []
     for tag, lab, col in [("frozen", "pretrained", COG),
-                          ("random_init", "randomly initialised", HL)]:
+                          ("random_init", "randomly initialized", HL)]:
         f = INT / f"probe_identity_tokens_{tag}.csv"
         if f.exists():
             idf.append((pd.read_csv(f), lab, col))

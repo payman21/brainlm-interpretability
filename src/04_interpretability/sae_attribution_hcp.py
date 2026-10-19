@@ -402,16 +402,19 @@ def main() -> None:
                                 "mean_activation", "frac_windows_nonzero"]]
           .to_string(index=False, float_format=lambda v: f"{v:+.4g}"))
 
-    feats.to_csv(sae_dir / "sae_attribution_features.csv", index=False)
-    cum.to_csv(sae_dir / "sae_attribution_cumulative.csv", index=False)
-    summ.to_csv(sae_dir / "sae_attribution_summary.csv", index=False)
-    pd.DataFrame(ctl).to_csv(sae_dir / "sae_attribution_controls.csv", index=False)
+    # The configured target keeps the canonical file names the manuscript reads; any
+    # other target is suffixed, so attributing a second target never overwrites them.
+    sfx = "" if target == cfg["label_column"] else f"_{target}"
+    feats.to_csv(sae_dir / f"sae_attribution_features{sfx}.csv", index=False)
+    cum.to_csv(sae_dir / f"sae_attribution_cumulative{sfx}.csv", index=False)
+    summ.to_csv(sae_dir / f"sae_attribution_summary{sfx}.csv", index=False)
+    pd.DataFrame(ctl).to_csv(sae_dir / f"sae_attribution_controls{sfx}.csv", index=False)
     stamp(sae_dir, "src/04_interpretability/sae_attribution_hcp.py", ROOT,
           target=target, n_subjects_train=n_subj, width=width,
           fidelity_r2=fid_r2, share_at_top_k=share_top, top_k=args.top,
           k_to_50pct=k50, readout_cv_r2=cv_r2)
-    for f in ("sae_attribution_features.csv", "sae_attribution_cumulative.csv",
-              "sae_attribution_summary.csv", "sae_attribution_controls.csv"):
+    for f in (f"sae_attribution_features{sfx}.csv", f"sae_attribution_cumulative{sfx}.csv",
+              f"sae_attribution_summary{sfx}.csv", f"sae_attribution_controls{sfx}.csv"):
         print(f"-> {sae_dir / f}")
 
 

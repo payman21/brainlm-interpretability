@@ -54,6 +54,11 @@ def main() -> None:
     ap.add_argument("--embedding", default="cls", choices=["cls", "mean"])
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--split", choices=("all", "train"), default="all",
+                    help="'train' restricts the screen to the training split, so the "
+                         "target is chosen without the subjects the holdout later "
+                         "tests. Outputs gain a _train suffix; 'all' reproduces the "
+                         "full-cohort table the manuscript reported first.")
     args = ap.parse_args()
 
     cfg = load_config(args.dataset)
@@ -67,6 +72,11 @@ def main() -> None:
     pheno = pheno.set_index("Subject")
 
     keep = [s for s in cohort if s in set(sid)]
+    if args.split == "train":
+        split_dir = ROOT / "results" / args.dataset / "splits"
+        train_ids = {l.strip() for l in open(split_dir / "train_subjects.txt") if l.strip()}
+        keep = [s for s in keep if s in train_ids]
+        print(f"training split only: {len(keep)} subjects")
     idx = {s: i for i, s in enumerate(keep)}
     m = np.array([s in idx for s in sid])
     si = np.array([idx[s] for s in sid[m]])
@@ -115,11 +125,12 @@ def main() -> None:
     df = pd.DataFrame(rows)
     out = ROOT / "results" / args.dataset / "brainlm" / "metrics"
     out.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out / f"frozen_controls_{args.embedding}.csv", index=False)
+    sfx = "_train" if args.split == "train" else ""
+    df.to_csv(out / f"frozen_controls_{args.embedding}{sfx}.csv", index=False)
     stamp(out, "src/03_evaluation/frozen_controls_hcp.py", ROOT,
-          embedding=args.embedding, n_subjects=len(keep), folds=args.folds,
+          embedding=args.embedding, split=args.split, n_subjects=len(keep), folds=args.folds,
           sex_balanced_acc=float(acc_sex), phase_encode_balanced_acc=float(acc_pe))
-    print(f"\n-> {out / f'frozen_controls_{args.embedding}.csv'}")
+    print(f"\n-> {out / f'frozen_controls_{args.embedding}{sfx}.csv'}")
 
 
 if __name__ == "__main__":

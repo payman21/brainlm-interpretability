@@ -73,6 +73,11 @@ def main() -> None:
     ap.add_argument("--target", default=None)
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--split", choices=("all", "train"), default="all",
+                    help="'train' restricts distillation to the training split, so the "
+                         "winning family is never scored on subjects the holdout later "
+                         "tests. Outputs gain a _train suffix; 'all' reproduces the "
+                         "full-cohort tables the manuscript reported first.")
     args = ap.parse_args()
 
     cfg = load_config(args.dataset)
@@ -92,6 +97,11 @@ def main() -> None:
     pheno["Subject"] = pheno["Subject"].astype(str)
     tgt = pheno.set_index("Subject")[target]
     subs = [s for s in F.index if pd.notna(tgt.get(s, np.nan))]
+    if args.split == "train":
+        split_dir = ROOT / "results" / args.dataset / "splits"
+        train_ids = {l.strip() for l in open(split_dir / "train_subjects.txt") if l.strip()}
+        subs = [s for s in subs if s in train_ids]
+        print(f"training split only: {len(subs)} subjects")
     F = F.loc[subs]
     y_raw = np.array([tgt[s] for s in subs], float)
     y = (y_raw - y_raw.min()) / (y_raw.max() - y_raw.min())
@@ -173,15 +183,16 @@ def main() -> None:
 
     out = ROOT / "results" / args.dataset / "brainlm" / "metrics"
     out.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out / f"distillation_{target}.csv", index=False)
-    sdf.to_csv(out / f"distillation_single_features_{target}.csv", index=False)
-    ndf.to_csv(out / f"distillation_network_timescale_{target}.csv", index=False)
+    sfx = "_train" if args.split == "train" else ""
+    df.to_csv(out / f"distillation_{target}{sfx}.csv", index=False)
+    sdf.to_csv(out / f"distillation_single_features_{target}{sfx}.csv", index=False)
+    ndf.to_csv(out / f"distillation_network_timescale_{target}{sfx}.csv", index=False)
     stamp(out, "src/04_interpretability/distill_hcp.py", ROOT, target=target,
-          n_subjects=len(subs), model_r2=base,
+          split=args.split, n_subjects=len(subs), model_r2=base,
           best_set=str(df.loc[df.target_r2.idxmax(), "feature_set"]),
           best_target_r2=float(df.target_r2.max()),
           best_model_fidelity=float(df.model_fidelity_r2.max()))
-    print(f"\n-> {out}/distillation_{target}.csv")
+    print(f"\n-> {out}/distillation_{target}{sfx}.csv")
 
 
 if __name__ == "__main__":
