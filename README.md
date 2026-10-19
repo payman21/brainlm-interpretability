@@ -15,6 +15,25 @@ autocorrelation in the central executive network.
 Contact: Payman Roghani, Center for Brain and Cognition, Computational
 Neuroscience Group, Universitat Pompeu Fabra, Barcelona (proghani@gmail.com).
 
+## Paper
+
+Payman Roghani. *Interpretability nominates a testable hypothesis from an fMRI
+foundation model: a proof of concept with sparse-feature attribution.*
+[Interpretability for Discovery](https://interpretability4discovery.github.io/)
+workshop, NeurIPS 2026.
+Paper and reviews: <https://openreview.net/forum?id=0KplE7FkqO>
+
+```bibtex
+@inproceedings{roghani2026interpretability,
+  title     = {Interpretability nominates a testable hypothesis from an {fMRI}
+               foundation model: a proof of concept with sparse-feature attribution},
+  author    = {Roghani, Payman},
+  booktitle = {NeurIPS 2026 Workshop on Interpretability for Discovery},
+  year      = {2026},
+  url       = {https://openreview.net/forum?id=0KplE7FkqO}
+}
+```
+
 ## Reproduce the figures and tables in five minutes
 
 Every figure panel reads a committed CSV, so the numbers in the paper can be
